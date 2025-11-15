@@ -1,0 +1,2112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>压缩机叶轮设计计算程序 · Web 科技炫酷版</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    /* ============ 全局背景 & 粒子效果 ============ */
+    :root {
+      --bg-dark: #020617;
+      --card-bg: rgba(15, 23, 42, 0.92);
+      --accent-cyan: #22d3ee;
+      --accent-blue: #38bdf8;
+      --accent-purple: #a855f7;
+      --accent-pink: #ec4899;
+      --border-subtle: rgba(148, 163, 184, 0.4);
+      --text-main: #e5e7eb;
+      --text-subtle: #9ca3af;
+      --radius-xl: 24px;
+      --shadow-strong: 0 22px 60px rgba(15, 23, 42, 0.9);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text-main);
+      background: radial-gradient(circle at 0% 0%, #020617 0, #020617 40%, #000 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      /* 粒子背景层 */
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      background-image: radial-gradient(
+          2px 2px at 20% 30%,
+          rgba(56, 189, 248, 0.8),
+          transparent
+        ),
+        radial-gradient(
+          1.5px 1.5px at 80% 70%,
+          rgba(244, 114, 182, 0.7),
+          transparent
+        ),
+        radial-gradient(
+          2.5px 2.5px at 10% 80%,
+          rgba(129, 140, 248, 0.7),
+          transparent
+        ),
+        radial-gradient(
+          2px 2px at 90% 20%,
+          rgba(45, 212, 191, 0.6),
+          transparent
+        ),
+        radial-gradient(
+          1.4px 1.4px at 50% 10%,
+          rgba(251, 191, 36, 0.6),
+          transparent
+        );
+      opacity: 0.9;
+      animation: floatParticles 45s linear infinite;
+    }
+
+    @keyframes floatParticles {
+      0% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      50% {
+        transform: translate3d(-80px, -120px, 0) scale(1.03);
+      }
+      100% {
+        transform: translate3d(-160px, -220px, 0) scale(1);
+      }
+    }
+
+    /* ============ 布局 & 容器 ============ */
+    .app-shell {
+      max-width: 1320px;
+      margin: 24px auto 40px;
+      padding: 18px;
+    }
+
+    .glass-card {
+      background: radial-gradient(
+        circle at 0% 0%,
+        rgba(15, 23, 42, 0.96),
+        rgba(15, 23, 42, 0.88)
+      );
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      box-shadow: var(--shadow-strong);
+      padding: 24px 24px 26px;
+      backdrop-filter: blur(22px) saturate(130%);
+      position: relative;
+      overflow: hidden;
+      animation: cardFadeIn 0.8s ease-out;
+    }
+
+    .glass-card::before {
+      /* 卡片内部霓虹光斑 */
+      content: "";
+      position: absolute;
+      width: 420px;
+      height: 420px;
+      border-radius: 100%;
+      background: radial-gradient(
+        circle at 30% 0,
+        rgba(56, 189, 248, 0.46),
+        rgba(15, 23, 42, 0)
+      );
+      top: -180px;
+      right: -160px;
+      z-index: -1;
+      filter: blur(4px);
+      opacity: 0.85;
+    }
+
+    @keyframes cardFadeIn {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 14px, 0) scale(0.98);
+      }
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+    }
+
+    /* ============ 头部 ============ */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .header-main {
+      max-width: 70%;
+    }
+
+    .title {
+      font-size: 32px;
+      margin: 0 0 8px;
+      font-weight: 800;
+      background-image: linear-gradient(
+        120deg,
+        var(--accent-cyan),
+        var(--accent-blue),
+        var(--accent-purple),
+        var(--accent-pink),
+        var(--accent-cyan)
+      );
+      background-size: 260% 260%;
+      -webkit-background-clip: text;
+      color: transparent;
+      animation: titleGlow 10s ease-in-out infinite;
+      letter-spacing: 0.06em;
+    }
+
+    @keyframes titleGlow {
+      0%,
+      100% {
+        text-shadow: 0 0 20px rgba(56, 189, 248, 0.28),
+          0 0 40px rgba(56, 189, 248, 0.18);
+      }
+      50% {
+        text-shadow: 0 0 24px rgba(236, 72, 153, 0.6),
+          0 0 56px rgba(129, 140, 248, 0.55);
+      }
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--text-subtle);
+      font-size: 0.92rem;
+    }
+
+    .header-chip {
+      border-radius: 999px;
+      padding: 8px 14px;
+      border: 1px solid rgba(56, 189, 248, 0.65);
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(56, 189, 248, 0.26),
+        rgba(15, 23, 42, 0.96)
+      );
+      font-size: 0.8rem;
+      color: #e0f2fe;
+      box-shadow: 0 10px 30px rgba(56, 189, 248, 0.4);
+      text-align: right;
+    }
+
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    /* 小状态灯基础样式 */
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(15, 23, 42, 0.96),
+        rgba(15, 23, 42, 0.9)
+      );
+      font-size: 0.75rem;
+      color: var(--text-subtle);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.9);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #6b7280;
+      box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.35);
+    }
+
+    /* 未计算：灰色 */
+    .status-idle .status-dot {
+      background: #6b7280;
+      box-shadow:
+        0 0 0 2px rgba(148, 163, 184, 0.35),
+        0 0 10px rgba(148, 163, 184, 0.35);
+    }
+    .status-idle .status-label {
+      color: #9ca3af;
+    }
+
+    /* 已计算：蓝绿 */
+    .status-calculated {
+      border-color: rgba(56, 189, 248, 0.9);
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(56, 189, 248, 0.28),
+        rgba(15, 23, 42, 0.96)
+      );
+    }
+    .status-calculated .status-dot {
+      background: #22d3ee;
+      box-shadow:
+        0 0 0 2px rgba(56, 189, 248, 0.4),
+        0 0 12px rgba(56, 189, 248, 0.8);
+    }
+    .status-calculated .status-label {
+      color: #e0f2fe;
+    }
+
+    /* 已迭代：紫色 */
+    .status-iterated {
+      border-color: rgba(168, 85, 247, 0.95);
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(168, 85, 247, 0.32),
+        rgba(15, 23, 42, 0.96)
+      );
+    }
+    .status-iterated .status-dot {
+      background: #a855f7;
+      box-shadow:
+        0 0 0 2px rgba(168, 85, 247, 0.45),
+        0 0 12px rgba(168, 85, 247, 0.9);
+    }
+    .status-iterated .status-label {
+      color: #ede9fe;
+    }
+
+    /* ============ Tab 导航 ============ */
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin: 18px 0 10px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(15, 23, 42, 0.96),
+        rgba(15, 23, 42, 0.82)
+      );
+      color: var(--text-main);
+      padding: 7px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease-out;
+    }
+
+    .tab-btn:hover {
+      border-color: rgba(56, 189, 248, 0.8);
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.9);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(
+        120deg,
+        rgba(56, 189, 248, 0.9),
+        rgba(96, 165, 250, 0.95),
+        rgba(147, 51, 234, 0.95)
+      );
+      color: #020617;
+      border-color: transparent;
+      box-shadow: 0 14px 36px rgba(56, 189, 248, 0.65);
+    }
+
+    .tab-content {
+      display: none;
+      margin-top: 6px;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeInUpSoft 0.5s ease-out;
+    }
+
+    @keyframes fadeInUpSoft {
+      0% {
+        opacity: 0;
+        transform: translate3d(0, 8px, 0);
+      }
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+      }
+    }
+
+    /* ============ 表单布局 ============ */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .section-card {
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.38);
+      background: radial-gradient(
+        circle at 0% 0%,
+        rgba(15, 23, 42, 0.98),
+        rgba(15, 23, 42, 0.88)
+      );
+      padding: 14px 16px 16px;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.85);
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title span.icon {
+      font-size: 1rem;
+    }
+
+    .field-row {
+      margin-bottom: 8px;
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+
+    .field-row label {
+      color: var(--text-subtle);
+    }
+
+    .field-row input[type="text"],
+    .field-row input[type="number"],
+    .field-row textarea {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: rgba(15, 23, 42, 0.9);
+      padding: 6px 8px;
+      color: var(--text-main);
+      font-size: 0.84rem;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .field-row input:focus,
+    .field-row textarea:focus {
+      border-color: rgba(56, 189, 248, 0.9);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.7);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 48px;
+      max-height: 160px;
+      font-family: inherit;
+      line-height: 1.4;
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: var(--text-subtle);
+      margin-top: 4px;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(148, 163, 184, 0.7),
+        transparent
+      );
+      margin: 14px 0 12px;
+    }
+
+    /* ============ 按钮和工具条 ============ */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0 8px;
+    }
+
+    .btn {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      padding: 7px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(56, 189, 248, 0.2),
+        rgba(15, 23, 42, 0.98)
+      );
+      color: var(--text-main);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.9);
+      transition: all 0.18s ease-out;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px) scale(1.01);
+      border-color: rgba(56, 189, 248, 0.95);
+      box-shadow: 0 16px 38px rgba(56, 189, 248, 0.55);
+    }
+
+    .btn:active {
+      transform: translateY(0) scale(0.99);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn.secondary {
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(129, 140, 248, 0.2),
+        rgba(15, 23, 42, 0.98)
+      );
+    }
+
+    .btn.disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn.disabled:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: rgba(148, 163, 184, 0.6);
+    }
+
+    /* ============ 结果 & 警告 ============ */
+    .output-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .output-box {
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: radial-gradient(
+        circle at 0% 0%,
+        rgba(15, 23, 42, 0.98),
+        rgba(15, 23, 42, 0.88)
+      );
+      padding: 10px 12px 12px;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.85);
+      font-size: 0.83rem;
+      overflow: auto;
+      max-height: 320px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    .output-box.warn {
+      border-color: rgba(248, 113, 113, 0.7);
+    }
+
+    .output-box.ok {
+      border-color: rgba(52, 211, 153, 0.7);
+    }
+
+    .output-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .badge-ok {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 999px;
+      padding: 3px 10px;
+      border: 1px solid rgba(34, 197, 94, 0.9);
+      color: #bbf7d0;
+      font-size: 0.72rem;
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(34, 197, 94, 0.35),
+        rgba(15, 23, 42, 0.98)
+      );
+    }
+
+    .badge-warn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 999px;
+      padding: 3px 10px;
+      border: 1px solid rgba(248, 113, 113, 0.9);
+      color: #fecaca;
+      font-size: 0.72rem;
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(248, 113, 113, 0.35),
+        rgba(15, 23, 42, 0.98)
+      );
+    }
+
+    /* ============ 叶轮图像区域 ============ */
+    .impeller-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    .impeller-card {
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(15, 23, 42, 0.98),
+        rgba(15, 23, 42, 0.88)
+      );
+      padding: 10px;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.85);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .impeller-header {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #c7d2fe;
+    }
+
+    .impeller-meta {
+      font-size: 0.72rem;
+      color: var(--text-subtle);
+      margin-bottom: 4px;
+      white-space: pre-line;
+    }
+
+    canvas {
+      border-radius: 14px;
+      background: radial-gradient(
+        circle at 0 0,
+        rgba(15, 23, 42, 1),
+        rgba(15, 23, 42, 0.94)
+      );
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.9);
+    }
+
+    .footer-note {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: var(--text-subtle);
+    }
+
+    @media (max-width: 900px) {
+      .grid-2,
+      .output-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .header-main {
+        max-width: 100%;
+      }
+      .header-right {
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="glass-card">
+      <!-- 头部 -->
+      <div class="header">
+        <div class="header-main">
+          <h1 class="title">🌀 压缩机叶轮设计计算程序 · Web 科技版</h1>
+          <p class="subtitle">
+            保留 PyQt 桌面程序的核心计算逻辑，用 HTML + JavaScript 重写，
+            叠加粒子背景、玻璃拟态与炫光效果，适合展示与调参。
+          </p>
+        </div>
+
+        <!-- 右侧：信息卡 + 状态灯 -->
+        <div class="header-right">
+          <div class="header-chip">
+            <div>多段 · 多级压缩机叶轮</div>
+            <div style="font-size:0.75rem;opacity:0.8;">前端实现 / 纯前端计算</div>
+          </div>
+
+          <!-- 小状态灯：未计算 / 已计算 / 已迭代 -->
+          <div class="status-indicator status-idle" id="calc-status">
+            <span class="status-dot"></span>
+            <span class="status-label">未计算</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 导航 -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="tab-params">🧮 参数输入与计算</button>
+        <button class="tab-btn" data-tab="tab-results">📊 结果与警告</button>
+        <button class="tab-btn" data-tab="tab-impeller">🌀 叶轮图像</button>
+      </div>
+
+      <!-- 参数输入与计算 -->
+      <div id="tab-params" class="tab-content active">
+        <!-- 基础设置 -->
+        <div class="section-card">
+          <div class="section-title">
+            <span class="icon">⚙️</span>
+            <span>基础参数设置（原 PyQt 大表 1）</span>
+          </div>
+          <div class="grid-2">
+            <div>
+              <div class="field-row">
+                <label for="numStage">压缩机段数：</label>
+                <input type="number" id="numStage" min="1" max="10" value="2" />
+              </div>
+              <div class="field-row">
+                <label for="stageSections">各段级数（逗号分隔）：</label>
+                <input type="text" id="stageSections" value="4,3" />
+              </div>
+              <p class="hint">
+                例如：2 段、总共 7 级，可写为 <code>4,3</code>；修改后点击下方“应用段结构并重置默认参数”。
+              </p>
+            </div>
+            <div>
+              <div class="field-row">
+                <label for="base_R">气体常数 R (J/(kg·K))：</label>
+                <input type="number" step="0.0001" id="base_R" value="518.27" />
+              </div>
+              <div class="field-row">
+                <label for="base_k">绝热指数 k：</label>
+                <input type="number" step="0.0001" id="base_k" value="1.3055" />
+              </div>
+            </div>
+          </div>
+          <div class="toolbar">
+            <button class="btn secondary" id="btn-apply-structure">
+              ✨ 应用段结构并重置默认参数
+            </button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 单值 + 段 / 级 参数 -->
+        <div class="grid-2">
+          <!-- 单值选取参数 -->
+          <div class="section-card">
+            <div class="section-title">
+              <span class="icon">🎯</span>
+              <span>单值选取参数</span>
+            </div>
+            <div class="field-row">
+              <label for="single_K_d">主轴直径系数 K_d：</label>
+              <input type="number" step="0.000001" id="single_K_d" />
+            </div>
+            <div class="field-row">
+              <label for="single_d_chu_D_2">轮毂比 d_chu_D_2：</label>
+              <input type="number" step="0.000001" id="single_d_chu_D_2" />
+            </div>
+            <div class="field-row">
+              <label for="single_delta">叶片厚度 delta (mm)：</label>
+              <input type="number" step="0.000001" id="single_delta" />
+            </div>
+            <div class="field-row">
+              <label for="single_delta_cal">计算叶片厚度 delta_cal (mm)：</label>
+              <input type="number" step="0.000001" id="single_delta_cal" />
+            </div>
+          </div>
+
+          <!-- 段数据参数（每列对应一段） -->
+          <div class="section-card">
+            <div class="section-title">
+              <span class="icon">📦</span>
+              <span>段数据参数（每列对应一段，逗号分隔）</span>
+            </div>
+            <div class="field-row">
+              <label for="seg_T_in_d">进口温度 T_in_d (K)：</label>
+              <input type="text" id="seg_T_in_d" />
+            </div>
+            <div class="field-row">
+              <label for="seg_p_in_d">进口压力 p_in_d (MPa)：</label>
+              <input type="text" id="seg_p_in_d" />
+            </div>
+            <div class="field-row">
+              <label for="seg_rho_in_d">进气密度 rho_in_d (kg/m³)：</label>
+              <input type="text" id="seg_rho_in_d" />
+            </div>
+            <div class="field-row">
+              <label for="seg_q_Vin_d">进气体积流量 q_Vin_d (m³/s)：</label>
+              <input type="text" id="seg_q_Vin_d" />
+            </div>
+            <div class="field-row">
+              <label for="seg_q_m_d">进气质量流量 q_m_d (kg/s)：</label>
+              <input type="text" id="seg_q_m_d" />
+            </div>
+            <div class="field-row">
+              <label for="seg_p_out_d">出口气压 p_out_d (MPa)：</label>
+              <input type="text" id="seg_p_out_d" />
+            </div>
+            <div class="field-row">
+              <label for="seg_n_d">转速 n_d (rpm)：</label>
+              <input type="text" id="seg_n_d" />
+            </div>
+            <div class="field-row">
+              <label for="seg_a_in">进口法兰 a_in (m)：</label>
+              <input type="text" id="seg_a_in" />
+            </div>
+            <div class="field-row">
+              <label for="seg_b_in">进口法兰 b_in (m)：</label>
+              <input type="text" id="seg_b_in" />
+            </div>
+            <p class="hint">
+              每一项的数组长度必须等于段数（例如段数为 2，则写 2 个数字，用逗号分隔）。
+            </p>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 级数据参数 -->
+        <div class="section-card">
+          <div class="section-title">
+            <span class="icon">📐</span>
+            <span>级数据参数（每列对应一级，逗号分隔）</span>
+          </div>
+          <div class="grid-2">
+            <div>
+              <div class="field-row">
+                <label for="stage_b_2_init">出口宽度 b_2_init (m)：</label>
+                <input type="text" id="stage_b_2_init" />
+              </div>
+              <div class="field-row">
+                <label for="stage_W_pol">内功率 W_pol (kJ/kg)：</label>
+                <input type="text" id="stage_W_pol" />
+              </div>
+              <div class="field-row">
+                <label for="stage_beta_2A">出口安装角 beta_2A (°)：</label>
+                <input type="text" id="stage_beta_2A" />
+              </div>
+              <div class="field-row">
+                <label for="stage_fai_2r">周速系数 fai_2r：</label>
+                <input type="text" id="stage_fai_2r" />
+              </div>
+              <div class="field-row">
+                <label for="stage_z">叶片数 z：</label>
+                <input type="text" id="stage_z" />
+              </div>
+              <div class="field-row">
+                <label for="stage_loss">损失系数 loss：</label>
+                <input type="text" id="stage_loss" />
+              </div>
+              <div class="field-row">
+                <label for="stage_yita_pol">等熵效率 yita_pol：</label>
+                <input type="text" id="stage_yita_pol" />
+              </div>
+            </div>
+            <div>
+              <div class="field-row">
+                <label for="stage_D_2">叶轮直径 D_2 (mm)：</label>
+                <input type="text" id="stage_D_2" />
+              </div>
+              <div class="field-row">
+                <label for="stage_d">轮毂直径 d (m)：</label>
+                <input type="text" id="stage_d" />
+              </div>
+              <div class="field-row">
+                <label for="stage_K_c">速度系数 K_c：</label>
+                <input type="text" id="stage_K_c" />
+              </div>
+              <div class="field-row">
+                <label for="stage_K_D">直径比 K_D：</label>
+                <input type="text" id="stage_K_D" />
+              </div>
+              <div class="field-row">
+                <label for="stage_tau_1">进口阻塞系数 tau_1：</label>
+                <input type="text" id="stage_tau_1" />
+              </div>
+              <div class="field-row">
+                <label for="stage_tau_2">出口阻塞系数 tau_2：</label>
+                <input type="text" id="stage_tau_2" />
+              </div>
+              <div class="field-row">
+                <label for="stage_k_v0">进口比体积比 k_v0：</label>
+                <input type="text" id="stage_k_v0" />
+              </div>
+              <div class="field-row">
+                <label for="stage_k_v2">出口比体积比 k_v2：</label>
+                <input type="text" id="stage_k_v2" />
+              </div>
+            </div>
+          </div>
+          <p class="hint">
+            每一项的数组长度必须等于总级数 K = 各段级数之和（例如 4,3 ⇒ K=7，则每个参数都要写 7 个数字）。
+          </p>
+        </div>
+
+        <!-- 计算按钮 -->
+        <div class="toolbar">
+          <button class="btn" id="btn-calc">🚀 开始计算</button>
+          <button class="btn secondary" id="btn-auto-iter">🔁 自动迭代并重新计算</button>
+          <button class="btn secondary" id="btn-download-json" disabled>
+            💾 下载计算结果 JSON
+          </button>
+        </div>
+      </div>
+
+      <!-- 结果与警告 -->
+      <div id="tab-results" class="tab-content">
+        <div class="section-card">
+          <div class="section-title">
+            <span class="icon">📊</span>
+            <span>计算结果与校验</span>
+          </div>
+          <div class="output-grid">
+            <div class="output-box" id="output-results">
+              <div class="output-title">计算结果将显示在此区域</div>
+              <div style="font-size:0.78rem;color:var(--text-subtle);margin-top:4px;">
+                请先在【🧮 参数输入与计算】中点击“开始计算”。
+              </div>
+            </div>
+            <div class="output-box warn" id="output-warnings">
+              <div class="output-title">
+                警告信息
+                <span id="badge-warn" class="badge-warn" style="margin-left:6px;display:none;">
+                  ⚠️ 存在异常，请检查
+                </span>
+                <span id="badge-ok" class="badge-ok" style="margin-left:6px;display:none;">
+                  ✅ 所有校验通过
+                </span>
+              </div>
+              <pre id="warnings-text" style="margin:4px 0 0;"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 叶轮图像 -->
+      <div id="tab-impeller" class="tab-content">
+        <div class="section-card">
+          <div class="section-title">
+            <span class="icon">🌀</span>
+            <span>各级叶轮几何示意图</span>
+          </div>
+          <div class="toolbar">
+            <button class="btn secondary" id="btn-render-impellers">
+              🎨 生成 / 刷新叶轮图像
+            </button>
+          </div>
+          <div id="impeller-container" class="impeller-grid"></div>
+          <p class="footer-note">
+            提示：叶轮图为简化几何示意，用于设计趋势与参数对照，可右键保存图片，
+            再在 CAD 中进一步精细建模。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===================== 参数配置（对应 PyQt initParamConfig） =====================
+    const paramConfig = {
+      single: [
+        { name: "主轴直径系数 K_d", key: "K_d", default: 0.023 },
+        { name: "轮毂比 d_chu_D_2", key: "d_chu_D_2", default: 0.3 },
+        { name: "叶片厚度 delta (mm)", key: "delta", default: 6 },
+        { name: "计算叶片厚度 delta_cal (mm)", key: "delta_cal", default: 4 },
+      ],
+      segment: [
+        {
+          name: "进口温度 T_in_d (K)",
+          key: "T_in_d",
+          defaultGen: (n) => Array.from({ length: n }, (_, i) => 293.15 + i * 25),
+        },
+        {
+          name: "进口压力 p_in_d (MPa)",
+          key: "p_in_d",
+          defaultGen: (n) => Array.from({ length: n }, (_, i) => 7.5 + i * 13),
+        },
+        {
+          name: "进气密度 rho_in_d (kg/m³)",
+          key: "rho_in_d",
+          defaultGen: (n) => Array.from({ length: n }, (_, i) => 56.56 + i * 86.89),
+        },
+        {
+          name: "进气体积流量 q_Vin_d (m³/s)",
+          key: "q_Vin_d",
+          defaultGen: (n) => Array.from({ length: n }, (_, i) => 2.07 - i * 1.25),
+        },
+        {
+          name: "进气质量流量 q_m_d (kg/s)",
+          key: "q_m_d",
+          defaultGen: (n) => Array.from({ length: n }, () => 117.08),
+        },
+        {
+          name: "出口气压 p_out_d (MPa)",
+          key: "p_out_d",
+          defaultGen: (n) => Array.from({ length: n }, (_, i) => 20.6 + i * 19.4),
+        },
+        {
+          name: "转速 n_d (rpm)",
+          key: "n_d",
+          defaultGen: (n) => Array.from({ length: n }, () => 9500),
+        },
+        {
+          name: "进口法兰 a_in (m)",
+          key: "a_in",
+          defaultGen: (n) => Array.from({ length: n }, (_, i) => 0.17 + i * -0.06),
+        },
+        {
+          name: "进口法兰 b_in (m)",
+          key: "b_in",
+          defaultGen: (n) => Array.from({ length: n }, (_, i) => 0.18 + i * -0.05),
+        },
+      ],
+      stage: [
+        {
+          name: "出口宽度 b_2_init (m)",
+          key: "b_2_init",
+          defaultGen: (n) => Array.from({ length: n }, (_, i) => 0.011 - i * 0.001),
+        },
+        {
+          name: "内功率 W_pol (kJ/kg)",
+          key: "W_pol",
+          defaultGen: (n) => Array.from({ length: n }, (_, i) => 5240 - i * 40),
+        },
+        {
+          name: "出口安装角 beta_2A (°)",
+          key: "beta_2A",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => (i < 4 ? 50 : 45)),
+        },
+        {
+          name: "周速系数 fai_2r",
+          key: "fai_2r",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => (i < 4 ? 0.26 : 0.24)),
+        },
+        {
+          name: "叶片数 z",
+          key: "z",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => (i < 4 ? 18 : 16)),
+        },
+        {
+          name: "损失系数 loss",
+          key: "loss",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => (i < 4 ? 1.0147 : 1.0312)),
+        },
+        {
+          name: "等熵效率 yita_pol",
+          key: "yita_pol",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => (i < 4 ? 0.8 : 0.75)),
+        },
+        {
+          name: "叶轮直径 D_2 (mm)",
+          key: "D_2",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => (i < 4 ? 558 : 538)),
+        },
+        {
+          name: "轮毂直径 d (m)",
+          key: "d",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => (i < 4 ? 0.27 : 0.24)),
+        },
+        {
+          name: "速度系数 K_c",
+          key: "K_c",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => 1.06 + Math.floor(i / 3) * 0.01),
+        },
+        {
+          name: "直径比 K_D",
+          key: "K_D",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => (i < 4 ? 1.1 : 1.05)),
+        },
+        {
+          name: "进口阻塞系数 tau_1",
+          key: "tau_1",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => 0.872 - i * 0.004),
+        },
+        {
+          name: "出口阻塞系数 tau_2",
+          key: "tau_2",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => (i < 4 ? 0.9461 : 0.9401)),
+        },
+        {
+          name: "进口比体积比 k_v0",
+          key: "k_v0",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => 0.98 + i * 0.28),
+        },
+        {
+          name: "出口比体积比 k_v2",
+          key: "k_v2",
+          defaultGen: (n) =>
+            Array.from({ length: n }, (_, i) => 1.27 + i * 0.33),
+        },
+      ],
+    };
+
+    const state = {
+      numberOfStage: 2,
+      stageSections: [4, 3],
+      K: 7,
+      results: null,
+      status: "idle", // "idle" | "calculated" | "iterated"
+    };
+
+    // ===================== 工具函数 =====================
+    function parseNumberList(str) {
+      if (!str.trim()) return [];
+      return str
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .map((s) => Number(s));
+    }
+
+    function formatNumberList(arr, digits = 6) {
+      return arr.map((v) => v.toFixed(digits)).join(",");
+    }
+
+    function showAlert(msg) {
+      alert(msg);
+    }
+
+    // 状态灯更新
+    function updateStatusIndicator() {
+      const el = document.getElementById("calc-status");
+      if (!el) return;
+
+      el.classList.remove("status-idle", "status-calculated", "status-iterated");
+
+      const label = el.querySelector(".status-label");
+      if (!label) return;
+
+      if (state.status === "calculated") {
+        el.classList.add("status-calculated");
+        label.textContent = "已计算";
+      } else if (state.status === "iterated") {
+        el.classList.add("status-iterated");
+        label.textContent = "已迭代";
+      } else {
+        el.classList.add("status-idle");
+        label.textContent = "未计算";
+      }
+    }
+
+    // ===================== 初始化默认参数到输入框 =====================
+    function applyStructureAndDefaults() {
+      const numStageInput = document.getElementById("numStage");
+      const stagesInput = document.getElementById("stageSections");
+      let numberOfStage = Number(numStageInput.value || 0);
+      if (!Number.isFinite(numberOfStage) || numberOfStage <= 0) {
+        showAlert("请正确输入压缩机段数（正整数）");
+        return;
+      }
+      const sections = parseNumberList(stagesInput.value || "");
+      if (
+        sections.length !== numberOfStage ||
+        sections.some((s) => !Number.isFinite(s) || s <= 0)
+      ) {
+        showAlert("各段级数数量应等于段数，并且均为正整数。例如段数=2，可写 4,3。");
+        return;
+      }
+      state.numberOfStage = numberOfStage;
+      state.stageSections = sections;
+      state.K = sections.reduce((a, b) => a + b, 0);
+
+      // 单值参数
+      paramConfig.single.forEach((p) => {
+        const el = document.getElementById("single_" + p.key);
+        if (el) el.value = p.default;
+      });
+
+      // 段数据参数
+      paramConfig.segment.forEach((p) => {
+        const el = document.getElementById("seg_" + p.key);
+        if (el) {
+          const arr = p.defaultGen(numberOfStage);
+          el.value = formatNumberList(arr, 6);
+        }
+      });
+
+      // 级数据参数
+      paramConfig.stage.forEach((p) => {
+        const el = document.getElementById("stage_" + p.key);
+        if (el) {
+          const arr = p.defaultGen(state.K);
+          el.value = formatNumberList(arr, 6);
+        }
+      });
+
+      // 结构变更后状态回到未计算
+      state.status = "idle";
+      updateStatusIndicator();
+      state.results = null;
+      document.getElementById("output-results").textContent =
+        "结构已更新，请重新进行计算。";
+      document.getElementById("warnings-text").textContent = "";
+      document.getElementById("btn-download-json").disabled = true;
+    }
+
+    // ===================== 从 DOM 读取所有输入参数 =====================
+    function getInputParamsFromDOM() {
+      try {
+        const params = {};
+
+        // 单值
+        paramConfig.single.forEach((p) => {
+          const el = document.getElementById("single_" + p.key);
+          if (!el) throw new Error("缺少单值参数输入框：" + p.key);
+          const val = Number(el.value);
+          if (!Number.isFinite(val)) {
+            throw new Error(p.name + " 输入有误");
+          }
+          params[p.key] = val;
+        });
+
+        // 段数据
+        paramConfig.segment.forEach((p) => {
+          const el = document.getElementById("seg_" + p.key);
+          if (!el) throw new Error("缺少段参数输入框：" + p.key);
+          const arr = parseNumberList(el.value);
+          if (arr.length !== state.numberOfStage) {
+            throw new Error(
+              p.name +
+                " 的数量应为 " +
+                state.numberOfStage +
+                "，当前为 " +
+                arr.length
+            );
+          }
+          params[p.key] = arr;
+        });
+
+        // 级数据
+        paramConfig.stage.forEach((p) => {
+          const el = document.getElementById("stage_" + p.key);
+          if (!el) throw new Error("缺少级参数输入框：" + p.key);
+          const arr = parseNumberList(el.value);
+          if (arr.length !== state.K) {
+            throw new Error(
+              p.name + " 的数量应为 " + state.K + "，当前为 " + arr.length
+            );
+          }
+          params[p.key] = arr;
+        });
+
+        // 基础参数
+        const R = Number(document.getElementById("base_R").value);
+        const k = Number(document.getElementById("base_k").value);
+        if (!Number.isFinite(R) || !Number.isFinite(k)) {
+          throw new Error("基础参数 R 或 k 输入有误");
+        }
+
+        params._R = R;
+        params._k = k;
+
+        return params;
+      } catch (e) {
+        showAlert("参数输入格式错误: " + e.message);
+        return null;
+      }
+    }
+
+    // ===================== determine_stage （段索引） =====================
+    function determineStage(i, stageSections) {
+      let cumulative = 0;
+      for (let stageIdx = 0; stageIdx < stageSections.length; stageIdx++) {
+        cumulative += stageSections[stageIdx];
+        if (i < cumulative) return stageIdx;
+      }
+      return stageSections.length - 1;
+    }
+
+    // ===================== 检查参数 & 结果 =====================
+    function checkParameters(inputParams, calculatedParams) {
+      const warnings = [];
+      const tolerance = 0.01; // 1%
+
+      const tau1In = inputParams["tau_1"];
+      const tau1Check = calculatedParams["tau_1_check"];
+      if (tau1In && tau1Check) {
+        for (let i = 0; i < tau1In.length; i++) {
+          if (Math.abs(tau1In[i]) < 1e-9) continue;
+          const diff = Math.abs(tau1In[i] - tau1Check[i]) / tau1In[i];
+          if (diff > tolerance) {
+            warnings.push(
+              `❌ 第${i + 1}级进口阻塞系数不一致：输入=${tau1In[i].toFixed(
+                6
+              )}, 计算=${tau1Check[i].toFixed(6)}, 误差=${(diff * 100).toFixed(
+                2
+              )}%`
+            );
+          }
+        }
+      }
+
+      const tau2In = inputParams["tau_2"];
+      const tau2Check = calculatedParams["tau_2_check"];
+      if (tau2In && tau2Check) {
+        for (let i = 0; i < tau2In.length; i++) {
+          if (Math.abs(tau2In[i]) < 1e-9) continue;
+          const diff = Math.abs(tau2In[i] - tau2Check[i]) / tau2In[i];
+          if (diff > tolerance) {
+            warnings.push(
+              `❌ 第${i + 1}级出口阻塞系数不一致：输入=${tau2In[i].toFixed(
+                6
+              )}, 计算=${tau2Check[i].toFixed(6)}, 误差=${(diff * 100).toFixed(
+                2
+              )}%`
+            );
+          }
+        }
+      }
+
+      const kv2In = inputParams["k_v2"];
+      const kv2Check = calculatedParams["k_v2_check"];
+      if (kv2In && kv2Check) {
+        for (let i = 0; i < kv2In.length; i++) {
+          if (Math.abs(kv2In[i]) < 1e-9) continue;
+          const diff = Math.abs(kv2In[i] - kv2Check[i]) / kv2In[i];
+          if (diff > tolerance) {
+            warnings.push(
+              `❌ 第${i + 1}级出口比体积比不一致：输入=${kv2In[i].toFixed(
+                6
+              )}, 计算=${kv2Check[i].toFixed(6)}, 误差=${(diff * 100).toFixed(
+                2
+              )}%`
+            );
+          }
+        }
+      }
+
+      const kv0In = inputParams["k_v0"];
+      const kv0Check = calculatedParams["k_v0_check"];
+      if (kv0In && kv0Check) {
+        for (let i = 0; i < kv0In.length; i++) {
+          if (Math.abs(kv0In[i]) < 1e-9) continue;
+          const diff = Math.abs(kv0In[i] - kv0Check[i]) / kv0In[i];
+          if (diff > tolerance) {
+            warnings.push(
+              `❌ 第${i + 1}级进口比体积比不一致：输入=${kv0In[i].toFixed(
+                6
+              )}, 计算=${kv0Check[i].toFixed(6)}, 误差=${(diff * 100).toFixed(
+                2
+              )}%`
+            );
+          }
+        }
+      }
+
+      return warnings;
+    }
+
+    function checkResults(results) {
+      const warnings = [];
+
+      const c0Vals = results["气流参数"]["叶轮进口气流速度c_0_m_s"];
+      c0Vals.forEach((c0, i) => {
+        if (c0 < 0) {
+          warnings.push(
+            `❌ 第${i + 1}级进口气流速度为负值：${c0.toFixed(4)} m/s`
+          );
+        }
+      });
+
+      const u1Vals = results["叶片参数"]["各级圆周速度u_1_m_s"];
+      u1Vals.forEach((u1, i) => {
+        if (u1 <= 0) {
+          warnings.push(
+            `❌ 第${i + 1}级圆周速度异常：${u1.toFixed(4)} m/s`
+          );
+        }
+      });
+
+      return warnings;
+    }
+
+    // ===================== 核心计算逻辑（移植 PyQt calculate） =====================
+    function calculate() {
+      const input = getInputParamsFromDOM();
+      if (!input) return;
+
+      try {
+        const K = state.K;
+        const R = input._R;
+        const k = input._k;
+        const stageSections = state.stageSections;
+        const numberOfStage = state.numberOfStage;
+
+        const K_d = input["K_d"];
+        const delta_cal = input["delta_cal"];
+
+        const T_in_d = input["T_in_d"];
+        const p_in_d = input["p_in_d"];
+        const rho_in_d = input["rho_in_d"];
+        const q_Vin_d = input["q_Vin_d"];
+        const n_d = input["n_d"];
+        const a_in = input["a_in"];
+        const b_in = input["b_in"];
+
+        const b_2_init = input["b_2_init"];
+        const W_pol = input["W_pol"];
+        const beta_2A = input["beta_2A"];
+        const fai_2r = input["fai_2r"];
+        const z = input["z"].map((v) => Number(v)); // for integer
+        const loss = input["loss"];
+        const yita_pol = input["yita_pol"];
+        const D_2 = input["D_2"];
+        const d = input["d"];
+        const K_c = input["K_c"];
+        const K_D = input["K_D"];
+        const tau_1 = input["tau_1"];
+        const tau_2 = input["tau_2"];
+        const k_v0 = input["k_v0"];
+        const k_v2 = input["k_v2"];
+
+        // 主轴直径估算（保持 PyQt 逻辑：D_2 直接平均）
+        const D_2m = K > 0 ? D_2.reduce((a, b) => a + b, 0) / K : 0;
+        const n = n_d && n_d.length > 0 ? n_d[0] : 0;
+        const d_Zm_max =
+          n > 0 ? K_d * (K + 2.3) * D_2m * Math.sqrt(n / 1300) : 0;
+        const d_Zm_min =
+          n > 0 ? K_d * (K + 2.3) * D_2m * Math.sqrt(n / 2885) : 0;
+
+        // 段进口法兰截面计算
+        const c_in_d = [];
+        for (let s = 0; s < numberOfStage; s++) {
+          const area = a_in[s] * b_in[s] + Math.PI * b_in[s] ** 2 / 4;
+          const c_in = area > 0 ? q_Vin_d[s] / area : 0;
+          c_in_d.push(c_in);
+        }
+
+        // 叶轮圆周速度 u_2
+        const u_2 = [];
+        for (let i = 0; i < K; i++) {
+          u_2.push(Math.PI * n / 60 * D_2[i] / 1000);
+        }
+
+        // D_0_w1min
+        const D_0_w1min = [];
+        for (let i = 0; i < K; i++) {
+          let term = 0;
+          if (tau_1[i] * k_v0[i] * K_D[i] * D_2[i] !== 0) {
+            term =
+              (4 *
+                tau_2[i] *
+                k_v2[i] *
+                K_c[i] *
+                fai_2r[i] *
+                (b_2_init[i] / D_2[i] * 1000)) /
+              (tau_1[i] * k_v0[i] * K_D[i]);
+          }
+          let sqrtTerm =
+            d[i] ** 2 +
+            Math.pow(2, 1 / 3) *
+              Math.pow(term, 2 / 3) *
+              (D_2[i] / 1000) ** 2;
+          sqrtTerm = Math.max(sqrtTerm, 1e-8);
+          D_0_w1min.push(Math.sqrt(sqrtTerm));
+        }
+
+        // A_0
+        const A_0 = D_0_w1min.map(
+          (D0, i) => (Math.PI * (D0 ** 2 - d[i] ** 2)) / 4
+        );
+
+        // c_0
+        const c_0 = [];
+        for (let i = 0; i < K; i++) {
+          const stageIdx = determineStage(i, stageSections);
+          const denom = k_v0[i] * A_0[i] || 1e-8;
+          c_0.push(q_Vin_d[stageIdx] / denom);
+        }
+
+        // 累计多变功 W_pol_cal
+        const W_pol_cal = new Array(K).fill(0);
+        let currentSum = 0;
+        let stageStart = 0;
+        for (let stageIdx = 0; stageIdx < stageSections.length; stageIdx++) {
+          const stageCount = stageSections[stageIdx];
+          const stageEnd = stageStart + stageCount;
+          currentSum = stageIdx === 0 ? 0 : W_pol_cal[stageStart - 1];
+          for (let i = stageStart; i < stageEnd; i++) {
+            if (i > stageStart) {
+              currentSum += W_pol[i - 1] / yita_pol[i - 1];
+            }
+            W_pol_cal[i] = currentSum;
+          }
+          stageStart = stageEnd;
+        }
+
+        // delta_T0
+        const delta_T0 = [];
+        for (let i = 0; i < K; i++) {
+          const stageIdx = determineStage(i, stageSections);
+          const kineticTerm =
+            (c_0[i] ** 2 - c_in_d[stageIdx] ** 2) / 2;
+          const delta_T =
+            R !== 0 ? ((k - 1) / k / R) * (W_pol_cal[i] - kineticTerm) : 0;
+          delta_T0.push(delta_T);
+        }
+
+        // sigma, k_v0_check
+        const sigma =
+          k !== 1
+            ? yita_pol.map((eta) => (k / (k - 1)) * eta)
+            : new Array(K).fill(0);
+
+        const k_v0_check = [];
+        for (let i = 0; i < K; i++) {
+          const stageIdx = determineStage(i, stageSections);
+          const baseT = T_in_d[stageIdx];
+          let tempRatio = baseT !== 0 ? 1 + delta_T0[i] / baseT : 1;
+          tempRatio = Math.max(tempRatio, 1e-8);
+          k_v0_check.push(Math.pow(tempRatio, sigma[i] - 1));
+        }
+
+        // 其他参数
+        const T_0 = [];
+        const rho_0 = [];
+        const p_0 = [];
+        const D_1 = [];
+        const u_1 = [];
+        const c_1_ = [];
+        const c_1 = [];
+        const beta_1 = [];
+        const beta_1A = [];
+        const i_para = [];
+        const tau_1_check = [];
+
+        for (let i = 0; i < K; i++) {
+          const stageIdx = determineStage(i, stageSections);
+          const T0 = T_in_d[stageIdx] + delta_T0[i];
+          T_0.push(T0);
+          const rho0 = k_v0[i] * rho_in_d[stageIdx];
+          rho_0.push(rho0);
+          const p0 = (rho0 * R * T0) / 1e6;
+          p_0.push(p0);
+
+          const D1 = K_D[i] * D_0_w1min[i];
+          D_1.push(D1);
+          const u1 = (n * Math.PI * D1) / 60;
+          u_1.push(u1);
+          const c1_ = K_c[i] * c_0[i];
+          c_1_.push(c1_);
+          const c1 = tau_1[i] !== 0 ? c1_ / tau_1[i] : 0;
+          c_1.push(c1);
+          const beta1 = u1 !== 0 ? (Math.atan(c1 / u1) * 180) / Math.PI : 0;
+          beta_1.push(beta1);
+          const beta1A = Math.round(beta1);
+          beta_1A.push(beta1A);
+          i_para.push(beta1A - beta1);
+
+          const denom =
+            Math.PI * D1 * Math.sin((beta1A * Math.PI) / 180);
+          const tau1c =
+            denom !== 0
+              ? 1 - (z[i] * delta_cal) / 1000 / denom
+              : 0;
+          tau_1_check.push(tau1c);
+        }
+
+        // tau_2_check
+        const tau_2_check = [];
+        for (let i = 0; i < K; i++) {
+          const denom =
+            Math.PI * D_2[i] * Math.sin((beta_2A[i] * Math.PI) / 180);
+          const tau2c =
+            denom !== 0
+              ? 1 -
+                (z[i] * delta_cal) /
+                  (Math.PI * D_2[i] * Math.sin((beta_2A[i] * Math.PI) / 180))
+              : 0;
+          tau_2_check.push(tau2c);
+        }
+
+        // delta_T2 & k_v2_check
+        const delta_T2 = [];
+        const k_v2_check = [];
+        for (let i = 0; i < K; i++) {
+          const stageIdx = determineStage(i, stageSections);
+
+          // 按 PyQt 逻辑：每次循环重新构造 W_tot、W_tot_cal
+          const W_tot = [];
+          for (let j = 0; j < K; j++) {
+            const val =
+              (fai_2r[i] /
+                Math.tan((beta_2A[i] * Math.PI) / 180) *
+                u_2[i] ** 2 *
+                loss[i]) /
+              1000;
+            W_tot.push(val);
+          }
+          const W_tot_cal = [];
+          let acc = 0;
+          for (let j = 0; j < K; j++) {
+            acc += W_tot[j];
+            W_tot_cal.push(acc);
+          }
+
+          const kineticTerm =
+            (c_0[i] ** 2 - c_in_d[stageIdx] ** 2) / 2;
+          const dT =
+            R !== 0
+              ? ((k - 1) / k / R) *
+                (W_tot_cal[i] * 1000 - kineticTerm)
+              : 0;
+          delta_T2.push(dT);
+
+          const baseT = T_in_d[stageIdx];
+          let tempRatio2 = baseT !== 0 ? 1 + dT / baseT : 1;
+          tempRatio2 = Math.max(tempRatio2, 1e-8);
+          k_v2_check.push(Math.pow(tempRatio2, sigma[i] - 1));
+        }
+
+        const results = {
+          基础参数: {
+            段数: numberOfStage,
+            各级数: stageSections,
+            总级数: K,
+            气体常数R: R,
+            绝热指数k: k,
+          },
+          主轴参数: {
+            主轴最大直径_m: d_Zm_max,
+            主轴最小直径_m: d_Zm_min,
+          },
+          叶轮参数: {
+            叶轮圆周速度_m_s: u_2,
+            叶轮进口最小直径_m: D_0_w1min,
+            叶轮叶片进口直径D_1_m: D_1,
+          },
+          气流参数: {
+            叶轮进口气流速度c_0_m_s: c_0,
+            各级进口温升delta_T0_K: delta_T0,
+            最终k_v0: k_v0,
+            最终k_v0_check: k_v0_check,
+            各级进口处气流温度T_0_K: T_0,
+            各级进口处气体密度rho_0_kg_m3: rho_0,
+            各级进口处压力p_0_MPa: p_0,
+          },
+          叶片参数: {
+            各级圆周速度u_1_m_s: u_1,
+            叶轮叶片进口前速度c_1__m_s: c_1_,
+            叶轮叶片进口后速度c_1_m_s: c_1,
+            叶轮叶片进口气流角beta_1_度: beta_1,
+            叶轮叶片进口安装角beta_1A_度: beta_1A,
+            冲角i_para_度: i_para,
+            进口阻塞系数tau_1_check: tau_1_check,
+            出口阻塞系数tau_2_check: tau_2_check,
+            出口比体积比k_v2_check: k_v2_check,
+          },
+        };
+
+        const calculatedParams = {
+          tau_1_check,
+          tau_2_check,
+          k_v0_check,
+          k_v2_check,
+        };
+
+        state.results = results;
+
+        const paramWarnings = checkParameters(input, calculatedParams);
+        const resultWarnings = checkResults(results);
+        const allWarnings = paramWarnings.concat(resultWarnings);
+        renderWarnings(allWarnings);
+        renderResults(results);
+        document.getElementById("btn-download-json").disabled = false;
+
+        // 状态：已计算
+        state.status = "calculated";
+        updateStatusIndicator();
+      } catch (e) {
+        showAlert("计算过程出错: " + e.message);
+      }
+    }
+
+    // ===================== 显示结果 =====================
+    function renderResults(results) {
+      const box = document.getElementById("output-results");
+      if (!results) {
+        box.textContent = "尚无结果，请先计算。";
+        return;
+      }
+      const lines = [];
+      lines.push("===== 计算结果（摘要） =====");
+      lines.push("");
+      lines.push("【基础参数】");
+      lines.push("段数: " + results["基础参数"]["段数"]);
+      lines.push("各级数: " + results["基础参数"]["各级数"].join(", "));
+      lines.push("总级数: " + results["基础参数"]["总级数"]);
+
+      lines.push("");
+      lines.push("【主轴参数】");
+      lines.push(
+        "主轴最大直径: " +
+          results["主轴参数"]["主轴最大直径_m"].toFixed(6) +
+          " m"
+      );
+      lines.push(
+        "主轴最小直径: " +
+          results["主轴参数"]["主轴最小直径_m"].toFixed(6) +
+          " m"
+      );
+
+      lines.push("");
+      lines.push("【叶轮参数】");
+      lines.push(
+        "叶轮圆周速度 u₂ (m/s): " +
+          results["叶轮参数"]["叶轮圆周速度_m_s"].map((v) =>
+            v.toFixed(4)
+          )
+      );
+      lines.push(
+        "叶轮进口最小直径 D₀_w1min (m): " +
+          results["叶轮参数"]["叶轮进口最小直径_m"].map((v) =>
+            v.toFixed(6)
+          )
+      );
+
+      lines.push("");
+      lines.push("【气流参数】");
+      lines.push(
+        "叶轮进口气流速度 c₀ (m/s): " +
+          results["气流参数"]["叶轮进口气流速度c_0_m_s"].map((v) =>
+            v.toFixed(4)
+          )
+      );
+      lines.push(
+        "各级进口温升 ΔT₀ (K): " +
+          results["气流参数"]["各级进口温升delta_T0_K"].map((v) =>
+            v.toFixed(4)
+          )
+      );
+      lines.push(
+        "最终 k_v0: " +
+          results["气流参数"]["最终k_v0"].map((v) => v.toFixed(6))
+      );
+      lines.push("");
+      lines.push(
+        "已成功计算叶轮参数 K = " + state.K + " 级，" +
+          "可在【🌀 叶轮图像】中查看几何示意图。"
+      );
+
+      box.textContent = lines.join("\n");
+    }
+
+    function renderWarnings(warnings) {
+      const pre = document.getElementById("warnings-text");
+      const box = document.getElementById("output-warnings");
+      const badgeWarn = document.getElementById("badge-warn");
+      const badgeOk = document.getElementById("badge-ok");
+
+      if (!warnings || warnings.length === 0) {
+        pre.textContent = "✅ 所有参数校验通过，未发现异常！";
+        box.classList.remove("warn");
+        box.classList.add("ok");
+        badgeWarn.style.display = "none";
+        badgeOk.style.display = "inline-flex";
+      } else {
+        pre.textContent = warnings.join("\n");
+        box.classList.add("warn");
+        box.classList.remove("ok");
+        badgeWarn.style.display = "inline-flex";
+        badgeOk.style.display = "none";
+        alert("发现 " + warnings.length + " 处警告，请查看【结果与警告】页。");
+      }
+    }
+
+    // ===================== 自动迭代：解析警告并更新参数 =====================
+    function parseWarningsText() {
+      const text = document.getElementById("warnings-text").textContent || "";
+      const lines = text.split("\n");
+      const paramsToUpdate = [];
+
+      lines.forEach((line) => {
+        const warning = line.trim();
+        if (!warning) return;
+
+        let paramType = null;
+        let checkType = null;
+        if (warning.includes("进口阻塞系数不一致")) {
+          paramType = "tau_1";
+          checkType = "tau_1_check";
+        } else if (warning.includes("出口阻塞系数不一致")) {
+          paramType = "tau_2";
+          checkType = "tau_2_check";
+        } else if (warning.includes("出口比体积比不一致")) {
+          paramType = "k_v2";
+          checkType = "k_v2_check";
+        } else if (warning.includes("进口比体积比不一致")) {
+          paramType = "k_v0";
+          checkType = "k_v0_check";
+        } else {
+          return;
+        }
+
+        try {
+          const seg = warning.split("第")[1];
+          const levelStr = seg.split("级")[0];
+          const levelIdx = parseInt(levelStr, 10) - 1;
+          if (!isNaN(levelIdx) && levelIdx >= 0) {
+            paramsToUpdate.push([paramType, checkType, levelIdx]);
+          }
+        } catch (e) {
+          // ignore parse error
+        }
+      });
+
+      return paramsToUpdate;
+    }
+
+    function updateParametersFromWarnings(paramsToUpdate) {
+      if (!state.results) return false;
+
+      const calc = {
+        tau_1_check:
+          state.results["叶片参数"]["进口阻塞系数tau_1_check"],
+        tau_2_check:
+          state.results["叶片参数"]["出口阻塞系数tau_2_check"],
+        k_v0_check: state.results["气流参数"]["最终k_v0_check"],
+        k_v2_check:
+          state.results["叶片参数"]["出口比体积比k_v2_check"],
+      };
+
+      let updated = false;
+
+      paramsToUpdate.forEach(([paramType, checkType, levelIdx]) => {
+        if (!calc[checkType]) return;
+        const calcArr = calc[checkType];
+        if (levelIdx >= calcArr.length) return;
+
+        const inputEl = document.getElementById("stage_" + paramType);
+        if (!inputEl) return;
+        const arr = parseNumberList(inputEl.value);
+        if (levelIdx >= arr.length) return;
+
+        const current = arr[levelIdx];
+        const calcVal = calcArr[levelIdx];
+        let errorRatio =
+          Math.abs(current) < 1e-9
+            ? 1
+            : Math.abs(current - calcVal) / Math.abs(current);
+
+        let newVal;
+        if (errorRatio > 0.05) {
+          newVal = calcVal;
+        } else {
+          newVal = (current + calcVal) / 2;
+        }
+
+        arr[levelIdx] = newVal;
+        inputEl.value = formatNumberList(arr, 6);
+        updated = true;
+      });
+
+      return updated;
+    }
+
+    function autoIterate() {
+      const paramsToUpdate = parseWarningsText();
+      if (!paramsToUpdate || paramsToUpdate.length === 0) {
+        alert("没有可解析的参数警告，或当前无警告信息。");
+        return;
+      }
+      const updated = updateParametersFromWarnings(paramsToUpdate);
+      if (!updated) {
+        alert("无法更新参数，请检查当前结果或输入格式。");
+        return;
+      }
+      // 更新后重新计算
+      calculate();
+      // 状态：已迭代
+      state.status = "iterated";
+      updateStatusIndicator();
+      alert("已根据警告自动更新参数并重新计算。");
+    }
+
+    // ===================== 叶轮绘制（Canvas） =====================
+    function drawImpellerCanvas(ctx, width, height, d_mm, D2_mm, z, beta2A) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.save();
+      ctx.translate(width / 2, height / 2);
+
+      const d_m = d_mm / 1000; // 按 PyQt 注释：d 视作 mm，再转 m
+      const D2_m = D2_mm / 1000;
+
+      const maxR = Math.max(d_m / 2, D2_m / 2);
+      const scale = (0.8 * Math.min(width, height)) / 2 / maxR;
+
+      const radiusHub = (d_m / 2) * scale;
+      const radiusOuter = (D2_m / 2) * scale;
+
+      // 轮毂
+      ctx.beginPath();
+      ctx.strokeStyle = "#60a5fa";
+      ctx.lineWidth = 2;
+      ctx.arc(0, 0, radiusHub, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 外径
+      ctx.beginPath();
+      ctx.strokeStyle = "#f97373";
+      ctx.lineWidth = 2;
+      ctx.arc(0, 0, radiusOuter, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const beta2Rad = (beta2A * Math.PI) / 180;
+      let R_arc;
+      try {
+        const innerTerm =
+          beta2Rad -
+          (d_m / D2_m) * Math.cos(beta2Rad - (40 * Math.PI) / 180);
+        R_arc =
+          ((1 - (d_m / D2_m) ** 2) * D2_m) /
+          (4 * Math.cos(innerTerm));
+      } catch (e) {
+        R_arc = D2_m / 4;
+      }
+      const R_arc_px = R_arc * scale;
+
+      ctx.strokeStyle = "#4ade80";
+      ctx.lineWidth = 1.6;
+
+      for (let i = 0; i < z; i++) {
+        const angle = (2 * Math.PI * i) / z;
+
+        const innerX = radiusHub * Math.cos(angle);
+        const innerY = radiusHub * Math.sin(angle);
+        const outerX = radiusOuter * Math.cos(angle);
+        const outerY = radiusOuter * Math.sin(angle);
+
+        try {
+          const arcCenterDistance = (radiusHub + radiusOuter) / 2;
+          const arcCenterX =
+            arcCenterDistance * Math.cos(angle + Math.PI / z);
+          const arcCenterY =
+            arcCenterDistance * Math.sin(angle + Math.PI / z);
+
+          const startAngle = (angle * 180) / Math.PI - beta2A / 2;
+          const endAngle = startAngle + beta2A;
+
+          ctx.beginPath();
+          ctx.arc(
+            arcCenterX,
+            arcCenterY,
+            R_arc_px,
+            (startAngle * Math.PI) / 180,
+            (endAngle * Math.PI) / 180
+          );
+          ctx.stroke();
+
+          const sx =
+            arcCenterX +
+            R_arc_px * Math.cos((startAngle * Math.PI) / 180);
+          const sy =
+            arcCenterY +
+            R_arc_px * Math.sin((startAngle * Math.PI) / 180);
+          ctx.beginPath();
+          ctx.moveTo(innerX, innerY);
+          ctx.lineTo(sx, sy);
+          ctx.stroke();
+
+          const ex =
+            arcCenterX +
+            R_arc_px * Math.cos((endAngle * Math.PI) / 180);
+          const ey =
+            arcCenterY +
+            R_arc_px * Math.sin((endAngle * Math.PI) / 180);
+          ctx.beginPath();
+          ctx.moveTo(outerX, outerY);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+        } catch (e) {
+          ctx.beginPath();
+          ctx.moveTo(innerX, innerY);
+          ctx.lineTo(outerX, outerY);
+          ctx.stroke();
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function renderImpellers() {
+      if (!state.results) {
+        alert("请先完成计算，再生成叶轮图像。");
+        return;
+      }
+      const K = state.K;
+      const D_2 = parseNumberList(document.getElementById("stage_D_2").value);
+      const dList = parseNumberList(document.getElementById("stage_d").value);
+      const zList = parseNumberList(document.getElementById("stage_z").value);
+      const beta2List = parseNumberList(
+        document.getElementById("stage_beta_2A").value
+      );
+
+      if (
+        D_2.length !== K ||
+        dList.length !== K ||
+        zList.length !== K ||
+        beta2List.length !== K
+      ) {
+        alert(
+          "当前级参数长度与总级数 K 不一致，请检查级数据参数输入后重新计算。"
+        );
+        return;
+      }
+
+      const container = document.getElementById("impeller-container");
+      container.innerHTML = "";
+
+      for (let i = 0; i < K; i++) {
+        const card = document.createElement("div");
+        card.className = "impeller-card";
+
+        const header = document.createElement("div");
+        header.className = "impeller-header";
+        header.innerHTML = `<span>第 ${i + 1} 级叶轮</span><span style="font-size:0.75rem;opacity:0.8;">z=${zList[
+          i
+        ]}, β₂ₐ=${beta2List[i]}°</span>`;
+        card.appendChild(header);
+
+        const meta = document.createElement("div");
+        meta.className = "impeller-meta";
+        const d_m = dList[i] / 1000;
+        const D2_m = D_2[i] / 1000;
+        meta.textContent =
+          `轮毂直径(按 mm 转 m): ${d_m.toFixed(4)} m\n` +
+          `叶轮直径: ${D2_m.toFixed(4)} m\n` +
+          `直径比: ${(d_m / D2_m).toFixed(4)}`;
+        card.appendChild(meta);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = 260;
+        canvas.height = 260;
+        const ctx = canvas.getContext("2d");
+        drawImpellerCanvas(
+          ctx,
+          canvas.width,
+          canvas.height,
+          dList[i],
+          D_2[i],
+          Math.round(zList[i]),
+          beta2List[i]
+        );
+        card.appendChild(canvas);
+
+        container.appendChild(card);
+      }
+    }
+
+    // ===================== 下载 JSON =====================
+    function downloadJsonResult() {
+      if (!state.results) {
+        alert("没有可保存的计算结果。");
+        return;
+      }
+      const blob = new Blob([JSON.stringify(state.results, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "compressor_results.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // ===================== Tab 切换 =====================
+    function setupTabs() {
+      const tabBtns = document.querySelectorAll(".tab-btn");
+      const tabContents = document.querySelectorAll(".tab-content");
+      tabBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const target = btn.getAttribute("data-tab");
+          tabBtns.forEach((b) => b.classList.remove("active"));
+          tabContents.forEach((c) => c.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById(target).classList.add("active");
+        });
+      });
+    }
+
+    // ===================== 初始化 =====================
+    function init() {
+      setupTabs();
+      applyStructureAndDefaults(); // 初始化默认值 & 状态 idle
+
+      document
+        .getElementById("btn-apply-structure")
+        .addEventListener("click", applyStructureAndDefaults);
+      document
+        .getElementById("btn-calc")
+        .addEventListener("click", () => {
+          calculate();
+          // 自动切到结果 Tab
+          document
+            .querySelector('.tab-btn[data-tab="tab-results"]')
+            .click();
+        });
+      document
+        .getElementById("btn-auto-iter")
+        .addEventListener("click", () => {
+          autoIterate();
+          document
+            .querySelector('.tab-btn[data-tab="tab-results"]')
+            .click();
+        });
+      document
+        .getElementById("btn-download-json")
+        .addEventListener("click", downloadJsonResult);
+      document
+        .getElementById("btn-render-impellers")
+        .addEventListener("click", () => {
+          renderImpellers();
+        });
+
+      // 初始状态灯
+      updateStatusIndicator();
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
