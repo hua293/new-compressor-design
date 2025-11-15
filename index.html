@@ -645,14 +645,14 @@
       <div class="header">
         <div class="header-main">
           <h1 class="title">🌀 压缩机叶轮设计计算程序</h1>
-          
+
         </div>
 
         <!-- 右侧：信息卡 + 状态灯 -->
         <div class="header-right">
           <div class="header-chip">
             <div>多段 · 多级压缩机叶轮</div>
-  
+
           </div>
 
           <!-- 小状态灯：未计算 / 已计算 / 已迭代 -->
@@ -867,11 +867,9 @@
 
         <!-- 计算按钮 -->
         <div class="toolbar">
-          <button class="btn" id="btn-calc">🚀 开始计算</button>
-          <button class="btn secondary" id="btn-auto-iter">🔁 自动迭代并重新计算</button>
-          <button class="btn secondary" id="btn-download-json" disabled>
-            💾 下载计算结果 JSON
-          </button>
+          <button class="btn" id="btn-calc" style="display: none;">🚀 开始计算</button>
+          <button class="btn secondary" id="btn-auto-iter">🔁 自动迭代并计算</button>
+
         </div>
       </div>
 
@@ -890,7 +888,7 @@
               </div>
             </div>
             <div class="output-box warn" id="output-warnings">
-              <div class="output-title">
+              <div class="output-title" style="display: none;">
                 警告信息
                 <span id="badge-warn" class="badge-warn" style="margin-left:6px;display:none;">
                   ⚠️ 存在异常，请检查
@@ -898,9 +896,13 @@
                 <span id="badge-ok" class="badge-ok" style="margin-left:6px;display:none;">
                   ✅ 所有校验通过
                 </span>
+
               </div>
               <pre id="warnings-text" style="margin:4px 0 0;"></pre>
             </div>
+                 <button class="btn secondary" id="btn-download-json" disabled>
+            💾 下载计算结果 JSON
+          </button>
           </div>
         </div>
       </div>
@@ -1654,8 +1656,314 @@
       } catch (e) {
         showAlert("计算过程出错: " + e.message);
       }
+      return allWarnings;
+    }
+// ===================== 计算并返回警告 =====================
+function calculateAndGetWarnings() {
+  const input = getInputParamsFromDOM();
+  if (!input) return null;
+
+  try {
+    // 这里复制 calculate 函数的核心计算逻辑，但简化显示部分
+    const K = state.K;
+    const R = input._R;
+    const k = input._k;
+    const stageSections = state.stageSections;
+    const numberOfStage = state.numberOfStage;
+
+    const K_d = input["K_d"];
+    const delta_cal = input["delta_cal"];
+
+    const T_in_d = input["T_in_d"];
+    const p_in_d = input["p_in_d"];
+    const rho_in_d = input["rho_in_d"];
+    const q_Vin_d = input["q_Vin_d"];
+    const n_d = input["n_d"];
+    const a_in = input["a_in"];
+    const b_in = input["b_in"];
+
+    const b_2_init = input["b_2_init"];
+    const W_pol = input["W_pol"];
+    const beta_2A = input["beta_2A"];
+    const fai_2r = input["fai_2r"];
+    const z = input["z"].map((v) => Number(v));
+    const loss = input["loss"];
+    const yita_pol = input["yita_pol"];
+    const D_2 = input["D_2"];
+    const d = input["d"];
+    const K_c = input["K_c"];
+    const K_D = input["K_D"];
+    const tau_1 = input["tau_1"];
+    const tau_2 = input["tau_2"];
+    const k_v0 = input["k_v0"];
+    const k_v2 = input["k_v2"];
+
+    // 主轴直径估算
+    const D_2m = K > 0 ? D_2.reduce((a, b) => a + b, 0) / K : 0;
+    const n = n_d && n_d.length > 0 ? n_d[0] : 0;
+    const d_Zm_max =
+      n > 0 ? K_d * (K + 2.3) * D_2m * Math.sqrt(n / 1300) : 0;
+    const d_Zm_min =
+      n > 0 ? K_d * (K + 2.3) * D_2m * Math.sqrt(n / 2885) : 0;
+
+    // 段进口法兰截面计算
+    const c_in_d = [];
+    for (let s = 0; s < numberOfStage; s++) {
+      const area = a_in[s] * b_in[s] + Math.PI * b_in[s] ** 2 / 4;
+      const c_in = area > 0 ? q_Vin_d[s] / area : 0;
+      c_in_d.push(c_in);
     }
 
+    // 叶轮圆周速度 u_2
+    const u_2 = [];
+    for (let i = 0; i < K; i++) {
+      u_2.push(Math.PI * n / 60 * D_2[i] / 1000);
+    }
+
+    // D_0_w1min
+    const D_0_w1min = [];
+    for (let i = 0; i < K; i++) {
+      let term = 0;
+      if (tau_1[i] * k_v0[i] * K_D[i] * D_2[i] !== 0) {
+        term =
+          (4 *
+            tau_2[i] *
+            k_v2[i] *
+            K_c[i] *
+            fai_2r[i] *
+            (b_2_init[i] / D_2[i] * 1000)) /
+          (tau_1[i] * k_v0[i] * K_D[i]);
+      }
+      let sqrtTerm =
+        d[i] ** 2 +
+        Math.pow(2, 1 / 3) *
+          Math.pow(term, 2 / 3) *
+          (D_2[i] / 1000) ** 2;
+      sqrtTerm = Math.max(sqrtTerm, 1e-8);
+      D_0_w1min.push(Math.sqrt(sqrtTerm));
+    }
+
+    // A_0
+    const A_0 = D_0_w1min.map(
+      (D0, i) => (Math.PI * (D0 ** 2 - d[i] ** 2)) / 4
+    );
+
+    // c_0
+    const c_0 = [];
+    for (let i = 0; i < K; i++) {
+      const stageIdx = determineStage(i, stageSections);
+      const denom = k_v0[i] * A_0[i] || 1e-8;
+      c_0.push(q_Vin_d[stageIdx] / denom);
+    }
+
+    // 累计多变功 W_pol_cal
+    const W_pol_cal = new Array(K).fill(0);
+    let currentSum = 0;
+    let stageStart = 0;
+    for (let stageIdx = 0; stageIdx < stageSections.length; stageIdx++) {
+      const stageCount = stageSections[stageIdx];
+      const stageEnd = stageStart + stageCount;
+      currentSum = stageIdx === 0 ? 0 : W_pol_cal[stageStart - 1];
+      for (let i = stageStart; i < stageEnd; i++) {
+        if (i > stageStart) {
+          currentSum += W_pol[i - 1] / yita_pol[i - 1];
+        }
+        W_pol_cal[i] = currentSum;
+      }
+      stageStart = stageEnd;
+    }
+
+    // delta_T0
+    const delta_T0 = [];
+    for (let i = 0; i < K; i++) {
+      const stageIdx = determineStage(i, stageSections);
+      const kineticTerm =
+        (c_0[i] ** 2 - c_in_d[stageIdx] ** 2) / 2;
+      const delta_T =
+        R !== 0 ? ((k - 1) / k / R) * (W_pol_cal[i] - kineticTerm) : 0;
+      delta_T0.push(delta_T);
+    }
+
+    // sigma, k_v0_check
+    const sigma =
+      k !== 1
+        ? yita_pol.map((eta) => (k / (k - 1)) * eta)
+        : new Array(K).fill(0);
+
+    const k_v0_check = [];
+    for (let i = 0; i < K; i++) {
+      const stageIdx = determineStage(i, stageSections);
+      const baseT = T_in_d[stageIdx];
+      let tempRatio = baseT !== 0 ? 1 + delta_T0[i] / baseT : 1;
+      tempRatio = Math.max(tempRatio, 1e-8);
+      k_v0_check.push(Math.pow(tempRatio, sigma[i] - 1));
+    }
+
+    // 其他参数
+    const T_0 = [];
+    const rho_0 = [];
+    const p_0 = [];
+    const D_1 = [];
+    const u_1 = [];
+    const c_1_ = [];
+    const c_1 = [];
+    const beta_1 = [];
+    const beta_1A = [];
+    const i_para = [];
+    const tau_1_check = [];
+
+    for (let i = 0; i < K; i++) {
+      const stageIdx = determineStage(i, stageSections);
+      const T0 = T_in_d[stageIdx] + delta_T0[i];
+      T_0.push(T0);
+      const rho0 = k_v0[i] * rho_in_d[stageIdx];
+      rho_0.push(rho0);
+      const p0 = (rho0 * R * T0) / 1e6;
+      p_0.push(p0);
+
+      const D1 = K_D[i] * D_0_w1min[i];
+      D_1.push(D1);
+      const u1 = (n * Math.PI * D1) / 60;
+      u_1.push(u1);
+      const c1_ = K_c[i] * c_0[i];
+      c_1_.push(c1_);
+      const c1 = tau_1[i] !== 0 ? c1_ / tau_1[i] : 0;
+      c_1.push(c1);
+      const beta1 = u1 !== 0 ? (Math.atan(c1 / u1) * 180) / Math.PI : 0;
+      beta_1.push(beta1);
+      const beta1A = Math.round(beta1);
+      beta_1A.push(beta1A);
+      i_para.push(beta1A - beta1);
+
+      const denom =
+        Math.PI * D1 * Math.sin((beta1A * Math.PI) / 180);
+      const tau1c =
+        denom !== 0
+          ? 1 - (z[i] * delta_cal) / 1000 / denom
+          : 0;
+      tau_1_check.push(tau1c);
+    }
+
+    // tau_2_check
+    const tau_2_check = [];
+    for (let i = 0; i < K; i++) {
+      const denom =
+        Math.PI * D_2[i] * Math.sin((beta_2A[i] * Math.PI) / 180);
+      const tau2c =
+        denom !== 0
+          ? 1 -
+            (z[i] * delta_cal) /
+              (Math.PI * D_2[i] * Math.sin((beta_2A[i] * Math.PI) / 180))
+          : 0;
+      tau_2_check.push(tau2c);
+    }
+
+    // delta_T2 & k_v2_check
+    const delta_T2 = [];
+    const k_v2_check = [];
+    for (let i = 0; i < K; i++) {
+      const stageIdx = determineStage(i, stageSections);
+
+      const W_tot = [];
+      for (let j = 0; j < K; j++) {
+        const val =
+          (fai_2r[i] /
+            Math.tan((beta_2A[i] * Math.PI) / 180) *
+            u_2[i] ** 2 *
+            loss[i]) /
+          1000;
+        W_tot.push(val);
+      }
+      const W_tot_cal = [];
+      let acc = 0;
+      for (let j = 0; j < K; j++) {
+        acc += W_tot[j];
+        W_tot_cal.push(acc);
+      }
+
+      const kineticTerm =
+        (c_0[i] ** 2 - c_in_d[stageIdx] ** 2) / 2;
+      const dT =
+        R !== 0
+          ? ((k - 1) / k / R) *
+            (W_tot_cal[i] * 1000 - kineticTerm)
+          : 0;
+      delta_T2.push(dT);
+
+      const baseT = T_in_d[stageIdx];
+      let tempRatio2 = baseT !== 0 ? 1 + dT / baseT : 1;
+      tempRatio2 = Math.max(tempRatio2, 1e-8);
+      k_v2_check.push(Math.pow(tempRatio2, sigma[i] - 1));
+    }
+
+    const results = {
+      基础参数: {
+        段数: numberOfStage,
+        各级数: stageSections,
+        总级数: K,
+        气体常数R: R,
+        绝热指数k: k,
+      },
+      主轴参数: {
+        主轴最大直径_m: d_Zm_max,
+        主轴最小直径_m: d_Zm_min,
+      },
+      叶轮参数: {
+        叶轮圆周速度_m_s: u_2,
+        叶轮进口最小直径_m: D_0_w1min,
+        叶轮叶片进口直径D_1_m: D_1,
+      },
+      气流参数: {
+        叶轮进口气流速度c_0_m_s: c_0,
+        各级进口温升delta_T0_K: delta_T0,
+        最终k_v0: k_v0,
+        最终k_v0_check: k_v0_check,
+        各级进口处气流温度T_0_K: T_0,
+        各级进口处气体密度rho_0_kg_m3: rho_0,
+        各级进口处压力p_0_MPa: p_0,
+      },
+      叶片参数: {
+        各级圆周速度u_1_m_s: u_1,
+        叶轮叶片进口前速度c_1__m_s: c_1_,
+        叶轮叶片进口后速度c_1_m_s: c_1,
+        叶轮叶片进口气流角beta_1_度: beta_1,
+        叶轮叶片进口安装角beta_1A_度: beta_1A,
+        冲角i_para_度: i_para,
+        进口阻塞系数tau_1_check: tau_1_check,
+        出口阻塞系数tau_2_check: tau_2_check,
+        出口比体积比k_v2_check: k_v2_check,
+      },
+    };
+
+    const calculatedParams = {
+      tau_1_check,
+      tau_2_check,
+      k_v0_check,
+      k_v2_check,
+    };
+
+    state.results = results;
+
+    const paramWarnings = checkParameters(input, calculatedParams);
+    const resultWarnings = checkResults(results);
+    const allWarnings = paramWarnings.concat(resultWarnings);
+
+    // 更新显示（但不弹出警告）
+    renderWarnings(allWarnings);
+    renderResults(results);
+    document.getElementById("btn-download-json").disabled = false;
+
+    // 状态：已计算
+    state.status = "calculated";
+    updateStatusIndicator();
+
+    // 返回警告信息供迭代使用
+    return allWarnings;
+  } catch (e) {
+    showAlert("计算过程出错: " + e.message);
+    return null;
+  }
+}
     // ===================== 显示结果 =====================
     function renderResults(results) {
       const box = document.getElementById("output-results");
@@ -1744,7 +2052,7 @@
         box.classList.remove("ok");
         badgeWarn.style.display = "inline-flex";
         badgeOk.style.display = "none";
-        alert("发现 " + warnings.length + " 处警告，请查看【结果与警告】页。");
+
       }
     }
 
@@ -1856,7 +2164,57 @@
       updateStatusIndicator();
       alert("已根据警告自动更新参数并重新计算。");
     }
+// ===================== 自动迭代直到无警告 =====================
+function autoIterateUntilNoWarnings() {
+  const maxIterations = 50; // 最大迭代次数防止无限循环
+  let iteration = 0;
+  let hasWarnings = true;
 
+  function doIteration() {
+    iteration++;
+
+    // 显示当前迭代进度
+    if (iteration <= maxIterations) {
+      alert(`正在执行第 ${iteration} 次迭代...`);
+    } else {
+      alert(`已达到最大迭代次数 ${maxIterations}，停止迭代。`);
+      // 切换到结果页
+      document.querySelector('.tab-btn[data-tab="tab-results"]').click();
+      return;
+    }
+
+    // 执行计算并获取警告
+    const warnings = calculateAndGetWarnings();
+
+    // 检查是否还有警告
+    hasWarnings = warnings && warnings.length > 0;
+
+    if (hasWarnings) {
+      // 解析警告并更新参数
+      const paramsToUpdate = parseWarningsText();
+      const updated = updateParametersFromWarnings(paramsToUpdate);
+
+      if (updated) {
+        // 继续下一次迭代
+        setTimeout(doIteration, 100);
+      } else {
+        alert("无法更新参数，迭代终止。");
+        // 切换到结果页
+        document.querySelector('.tab-btn[data-tab="tab-results"]').click();
+      }
+    } else {
+      alert(`迭代完成！共执行 ${iteration} 次迭代，所有警告已消除。`);
+      // 切换到结果页
+      document.querySelector('.tab-btn[data-tab="tab-results"]').click();
+      // 更新状态
+      state.status = "iterated";
+      updateStatusIndicator();
+    }
+  }
+
+  // 开始迭代
+  doIteration();
+}
     // ===================== 叶轮绘制（Canvas） =====================
     function drawImpellerCanvas(ctx, width, height, d_mm, D2_mm, z, beta2A) {
       ctx.clearRect(0, 0, width, height);
@@ -2082,14 +2440,11 @@
             .querySelector('.tab-btn[data-tab="tab-results"]')
             .click();
         });
-      document
-        .getElementById("btn-auto-iter")
-        .addEventListener("click", () => {
-          autoIterate();
-          document
-            .querySelector('.tab-btn[data-tab="tab-results"]')
-            .click();
-        });
+document
+  .getElementById("btn-auto-iter")
+  .addEventListener("click", () => {
+    autoIterateUntilNoWarnings();
+  });
       document
         .getElementById("btn-download-json")
         .addEventListener("click", downloadJsonResult);
